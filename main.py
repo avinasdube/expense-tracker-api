@@ -1,6 +1,14 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+from decimal import Decimal
+
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+from database import Base, SessionLocal, engine
+from models import Expense
+
 app = FastAPI()
 
 @app.get("/hello")
@@ -27,9 +35,35 @@ class ExpenseCreate(BaseModel):
     category: str = Field(min_length=1, max_length=50)
     description: str = Field(min_length=1, max_length = 200)
 
-@app.post("/expenses")
-def create_expenses(expense: ExpenseCreate):
+
+Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+
+    try:
+        yield db
+    finally:
+        db.close()
+
+@app.post("/expenses", status_code=201)
+def create_expense(
+    expense: ExpenseCreate,
+    db: Session = Depends(get_db),
+):
+    db_expense = Expense(
+        amount = Decimal(str(expense.amount)),
+        category = expense.category,
+        description = expense.description,
+    )
+
+    db.add(db_expense)
+    db.commit()
+    db.refresh(db_expense)
+
     return {
-        "message": "Expense received successfully.",
-        "expense": expense
+        "id": db_expense.id,
+        "amount": float(db_expense.amount),
+        "category": db_expense.category,
+        "description": db_expense.description,
     }
