@@ -1,10 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from decimal import Decimal
 
-from fastapi import Depends
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -13,22 +11,10 @@ from models import Expense
 
 app = FastAPI()
 
-@app.get("/hello")
-def say_hello():
-    return {"message": "Hello, Avinash."}
-
-@app.get("/search")
-def search_expenses(category: str, limit: int = 100):
-    return {
-        "category": category,
-        "limit": limit
-    }
-
 class ExpenseCreate(BaseModel):
     amount: float = Field(gt=0)
     category: str = Field(min_length=1, max_length=50)
     description: str = Field(min_length=1, max_length = 200)
-
 
 Base.metadata.create_all(bind=engine)
 
