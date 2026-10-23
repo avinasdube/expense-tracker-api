@@ -83,3 +83,54 @@ def get_expense(
         "category": expense.category,
         "description": expense.description
     }
+
+
+@app.put("/expenses/{expense_id}")
+def update_expense(
+    expense_id: int,
+    updated_expense: ExpenseCreate,
+    db: Session = Depends(get_db)
+):
+    expense = db.get(Expense, expense_id)
+
+    if expense is None:
+        raise HTTPException(
+            status_code=404,
+            detail= "Expense not found."
+        )
+
+    expense.amount = Decimal(str(updated_expense.amount))
+    expense.category = updated_expense.category
+    expense.description = updated_expense.description
+
+    db.commit()
+    db.refresh(expense)
+
+    return {
+        "id": expense.id,
+        "amount": float(expense.amount),
+        "category": expense.category,
+        "description": expense.description
+    }
+
+@app.delete("/expense/{expense_id}")
+def delete_expense(
+    expense_id: int,
+    db: Session = Depends(get_db),
+):
+
+    expense = db.get(Expense, expense_id)
+
+    if expense is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Expense not found."
+        )
+
+    db.delete(expense)
+    db.commit()
+
+    return {
+        "message": "Expense deleted successfully.",
+        "id": expense_id
+    }
