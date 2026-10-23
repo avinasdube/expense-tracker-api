@@ -1,10 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from decimal import Decimal
 
-from fastapi import Depends
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -13,22 +11,10 @@ from models import Expense
 
 app = FastAPI()
 
-@app.get("/hello")
-def say_hello():
-    return {"message": "Hello, Avinash."}
-
-@app.get("/search")
-def search_expenses(category: str, limit: int = 100):
-    return {
-        "category": category,
-        "limit": limit
-    }
-
 class ExpenseCreate(BaseModel):
     amount: float = Field(gt=0)
     category: str = Field(min_length=1, max_length=50)
     description: str = Field(min_length=1, max_length = 200)
-
 
 Base.metadata.create_all(bind=engine)
 
@@ -96,4 +82,55 @@ def get_expense(
         "amount": float(expense.amount),
         "category": expense.category,
         "description": expense.description
+    }
+
+
+@app.put("/expenses/{expense_id}")
+def update_expense(
+    expense_id: int,
+    updated_expense: ExpenseCreate,
+    db: Session = Depends(get_db)
+):
+    expense = db.get(Expense, expense_id)
+
+    if expense is None:
+        raise HTTPException(
+            status_code=404,
+            detail= "Expense not found."
+        )
+
+    expense.amount = Decimal(str(updated_expense.amount))
+    expense.category = updated_expense.category
+    expense.description = updated_expense.description
+
+    db.commit()
+    db.refresh(expense)
+
+    return {
+        "id": expense.id,
+        "amount": float(expense.amount),
+        "category": expense.category,
+        "description": expense.description
+    }
+
+@app.delete("/expense/{expense_id}")
+def delete_expense(
+    expense_id: int,
+    db: Session = Depends(get_db),
+):
+
+    expense = db.get(Expense, expense_id)
+
+    if expense is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Expense not found."
+        )
+
+    db.delete(expense)
+    db.commit()
+
+    return {
+        "message": "Expense deleted successfully.",
+        "id": expense_id
     }
